@@ -112,21 +112,41 @@ function abstractPersistence (opts) {
     matchRetainedWithPattern(t, 'hello/world')
   })
 
-  test('look up retained messages with a # pattern', function (t) {
-    matchRetainedWithPattern(t, '#')
-  })
-
-  test('look up retained messages with a hello/world/# pattern', function (t) {
-    matchRetainedWithPattern(t, 'hello/world/#')
-  })
-
-  test('look up retained messages with a + pattern', function (t) {
-    matchRetainedWithPattern(t, 'hello/+')
-  })
-
   test('look up retained messages with multiple patterns', function (t) {
-    matchRetainedWithPattern(t, ['hello/+', 'other/hello'])
+    matchRetainedWithPattern(t, ['hello/world', 'other/hello'])
   })
+
+  test('test matching multiple patterns with multiple stored messages', function (t) {
+    persistence(function (err, instance) {
+      if (err) { throw err }
+
+      storeRetained(instance, { topic: "t1", payload: "p1" }, function (err1, packet1) {
+        t.notOk(err1, 'no error')
+        storeRetained(instance, { topic: "t2", payload: "p2" }, function (err2, packet2) {
+          t.notOk(err2, 'no error')
+          storeRetained(instance, { topic: "t3", payload: "p3" }, function (err3, packet3) {
+            t.notOk(err3, 'no error')
+            storeRetained(instance, { topic: "t1/smth", payload: "p5" }, function (err4, packet4) {
+              t.notOk(err4, 'no error')
+              instance.createRetainedStreamCombi(['t2', 't5']).pipe(concat(function (list1) {
+                t.deepEqual(list1, [packet2], 'must return the packet')
+                instance.createRetainedStreamCombi(['t6', 't8', 't9']).pipe(concat(function (list2) {
+                  t.deepEqual(list2, [], 'must return the packet')
+                  instance.createRetainedStreamCombi(['t1', 't2']).pipe(concat(function (list3) {
+                    t.deepEqual(list3, [packet1, packet2], 'must return the packet')
+                    instance.createRetainedStreamCombi(['t3', 't2', 't1/smth', 'tt']).pipe(concat(function (list4) {
+                      t.deepEqual(list4, [packet3, packet2, packet4], 'must return the packet')
+                      instance.destroy(t.end.bind(t))
+                    }))
+                  }))
+                }))
+              }))
+            })
+          })
+        })
+      })
+    })
+  });
 
   testInstance('store multiple retained messages in order', function (t, instance) {
     const totalMessages = 1000
@@ -165,7 +185,7 @@ function abstractPersistence (opts) {
       }, function (err) {
         t.notOk(err, 'no error')
 
-        const stream = instance.createRetainedStream('#')
+        const stream = instance.createRetainedStream('hello/world')
 
         stream.pipe(concat(function (list) {
           t.deepEqual(list, [], 'must return an empty list')
@@ -183,7 +203,7 @@ function abstractPersistence (opts) {
       }, function (err, packet) {
         t.notOk(err, 'no error')
 
-        const stream = instance.createRetainedStream('#')
+        const stream = instance.createRetainedStream('hello/world')
 
         stream.pipe(concat(function (list) {
           t.deepEqual(list, [packet], 'must return the last packet')
@@ -208,7 +228,7 @@ function abstractPersistence (opts) {
       t.notOk(err, 'no error')
       // packet reference change to check if a new packet is stored always
       packet.retain = false
-      const stream = instance.createRetainedStream('#')
+      const stream = instance.createRetainedStream('hello/world')
 
       stream.pipe(concat(function (list) {
         t.deepEqual(list, [newPacket], 'must return the last packet')
@@ -275,10 +295,7 @@ function abstractPersistence (opts) {
     const subs = [{
       topic: 'hello',
       qos: 1
-    }, {
-      topic: 'hello/#',
-      qos: 1
-    }, {
+    },{
       topic: 'matteo',
       qos: 1
     }]
@@ -288,10 +305,6 @@ function abstractPersistence (opts) {
       instance.subscriptionsByTopic('hello', function (err, resubs) {
         t.notOk(err, 'no error')
         t.deepEqual(resubs, [{
-          clientId: client.id,
-          topic: 'hello/#',
-          qos: 1
-        }, {
           clientId: client.id,
           topic: 'hello',
           qos: 1
@@ -376,9 +389,6 @@ function abstractPersistence (opts) {
       topic: 'hello',
       qos: 0
     }, {
-      topic: 'hello/#',
-      qos: 1
-    }, {
       topic: 'matteo',
       qos: 1
     }]
@@ -390,11 +400,7 @@ function abstractPersistence (opts) {
         t.deepEqual(resubs, subs)
         instance.subscriptionsByTopic('hello', function (err, resubs2) {
           t.notOk(err, 'no error')
-          t.deepEqual(resubs2, [{
-            clientId: client.id,
-            topic: 'hello/#',
-            qos: 1
-          }])
+          t.deepEqual(resubs2, [])
           instance.destroy(t.end.bind(t))
         })
       })
