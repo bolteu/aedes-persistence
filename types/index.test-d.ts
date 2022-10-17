@@ -6,6 +6,7 @@ import { expectType } from 'tsd';
 import aedesMemoryPersistence, {
   AedesMemoryPersistence,
   AedesPersistenceSubscription,
+  AedesSharedSubscriptionParsed,
   CallbackError,
   WillPacket,
 } from '.';
@@ -162,6 +163,37 @@ expectType<void>(
 expectType<Readable>(aedesMemoryPersistence().streamWill({} as Brokers));
 
 expectType<Readable>(aedesMemoryPersistence().getClientList('topic'));
+
+expectType<string>(aedesMemoryPersistence().buildClientSharedTopic("group","client_id"));
+
+expectType<AedesSharedSubscriptionParsed>(aedesMemoryPersistence().parseSharedTopic("topic"));
+
+expectType<void>(
+    aedesMemoryPersistence().storeSharedSubscription(
+        "topic",
+        "group",
+        "clientId",
+        (error: CallbackError, clientTopic: string) => {}
+    )
+);
+
+expectType<void>(
+    aedesMemoryPersistence().removeSharedSubscription(
+        "topic",
+        "group",
+        "clientId",
+        (error: CallbackError) => {}
+    )
+);
+
+expectType<void>(
+    aedesMemoryPersistence().getSharedTopics(
+        "topic",
+        (error: CallbackError, shardedTopics: string[]) => {}
+    )
+);
+
+expectType<string>(aedesMemoryPersistence().restoreOriginalTopicFromSharedOne("topic"));
 
 expectType<void>(aedesMemoryPersistence().destroy());
 

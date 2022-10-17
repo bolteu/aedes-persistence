@@ -23,6 +23,13 @@ export interface AedesPersistenceSubscription {
   qos?: QoS;
 }
 
+export interface AedesSharedSubscriptionParsed {
+  clientId: ClientId;
+  group: string;
+  topic: Topic;
+}
+
+
 export type CallbackError = Error | null | undefined;
 
 export type WillPacket = AedesPacket & { [key: string]: any };
@@ -276,6 +283,28 @@ export class AedesMemoryPersistence implements AedesPersistence {
   streamWill: (brokers: Brokers) => Readable;
 
   getClientList: (topic: string) => Readable;
+
+  buildClientSharedTopic: (group: string, clientId: string) => string;
+
+  parseSharedTopic: (topic: string) => AedesSharedSubscriptionParsed;
+
+  storeSharedSubscription: (
+    topic: string,
+    group: string,
+    clientId: string,
+    cb: (error: CallbackError, clientTopic: string) => void) => void;
+
+  removeSharedSubscription: (
+    topic: string,
+    group: string,
+    clientId: string,
+    cb: (error: CallbackError) => void) => void;
+
+  getSharedTopics: (
+    topic: string,
+    cb: (error: CallbackError, shardedTopics: string[]) => void) => void;
+
+  restoreOriginalTopicFromSharedOne: (topic: string) => string;
 
   destroy: (cb?: (error: CallbackError) => void) => void;
 }
