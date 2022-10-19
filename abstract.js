@@ -1594,6 +1594,102 @@ function abstractPersistence (opts) {
       instance.destroy(t.end.bind(t))
     })
   })
+
+  testInstance('build proper shared topic for client', (t, instance) => {
+    t.equal(instance.buildClientSharedTopic('group', 'clientId'), '$share/group/$client_clientId/')
+    instance.destroy(t.end.bind(t))
+  })
+
+  testInstance(
+    'parse client topic properly', (t, instance) => {
+      t.deepEqual(instance.parseSharedTopic('$share/group/$client_clientId/some_topic'), {
+        group: 'group',
+        client_id: 'clientId',
+        topic: 'some_topic'
+      }, ' matches')
+
+      t.deepEqual(instance.parseSharedTopic('$share/group/$client_clientId/some/+/topic'), {
+        group: 'group',
+        client_id: 'clientId',
+        topic: 'some/+/topic'
+      }, ' matches')
+
+      t.deepEqual(instance.parseSharedTopic('$share/group/some_topic'), {
+        group: 'group',
+        client_id: null,
+        topic: 'some_topic'
+      }, ' matches')
+
+      t.deepEqual(instance.parseSharedTopic('$share/group/some/topic'), {
+        group: 'group',
+        client_id: null,
+        topic: 'some/topic'
+      }, ' matches')
+
+      t.deepEqual(instance.parseSharedTopic('$share/group/'), {
+        group: 'group',
+        client_id: null,
+        topic: ''
+      }, ' matches')
+
+      t.equal(instance.parseSharedTopic('$share/group'), null)
+      t.equal(instance.parseSharedTopic('not_share_topic/$share/group'), null)
+      instance.destroy(t.end.bind(t))
+    })
+
+  testInstance('store shared subscription', (t, instance) => {
+    instance.storeSharedSubscription('topic', 'group', 'clientId', (err, clientTopic) => {
+      t.error(err)
+      t.equal(clientTopic, '$share/group/$client_clientId/topic')
+      instance.getSharedTopics('topic', (err, shardedTopics) => {
+        t.error(err)
+        t.equal(shardedTopics.length, 1)
+        t.equal(shardedTopics[0], '$share/group/$client_clientId/topic')
+
+        instance.removeSharedSubscription('topic', 'group', 'clientId', (err) => {
+          t.error(err)
+          instance.getSharedTopics('topic', (err, shardedTopics) => {
+            t.error(err)
+            t.equal(shardedTopics.length, 0)
+            instance.destroy(t.end.bind(t))
+          })
+        })
+      })
+    })
+  })
+
+  testInstance('store wildcard shared subscription', (t, instance) => {
+    instance.storeSharedSubscription('topic/+/s', 'group', 'clientId', (err, clientTopic) => {
+      t.error(err)
+      t.equal(clientTopic, '$share/group/$client_clientId/topic/+/s')
+      instance.getSharedTopics('topic/qwe/s', (err, shardedTopics) => {
+        t.error(err)
+        t.equal(shardedTopics.length, 1)
+        t.equal(shardedTopics[0], '$share/group/$client_clientId/topic/qwe/s')
+        instance.destroy(t.end.bind(t))
+      })
+    })
+  })
+
+  testInstance('get not existent shared subscription', (t, instance) => {
+    instance.getSharedTopics('topic/qwe/s', (err, shardedTopics) => {
+      t.error(err)
+      t.deepEqual(shardedTopics, [])
+      instance.destroy(t.end.bind(t))
+    })
+  })
+
+  testInstance('build proper shared topic for client', (t, instance) => {
+    t.equal(instance.buildClientSharedTopic('group', 'clientId'), '$share/group/$client_clientId/')
+    instance.destroy(t.end.bind(t))
+  })
+
+  testInstance('parse client topic properly', (t, instance) => {
+    t.equal(instance.restoreOriginalTopicFromSharedOne('$share/group/$client_clientId/some_topic'), 'some_topic')
+    t.equal(instance.restoreOriginalTopicFromSharedOne('$share/group/some_topic'), '$share/group/some_topic')
+    t.equal(instance.restoreOriginalTopicFromSharedOne('non_shared/some_topic'), 'non_shared/some_topic')
+    instance.destroy(t.end.bind(t))
+  })
 }
 
 module.exports = abstractPersistence
