@@ -4,6 +4,9 @@
   "description": "The spec for an Aedes persistence, with abstract tests and a fast in-memory implementation.",
   "main": "persistence.js",
   "types": "types/index.d.ts",
+  "publishConfig": {
+    "registry": "http://npm.internal:4873"
+  },
   "scripts": {
     "lint": "standard --verbose | snazzy",
     "lint-fix": "standard --fix",
@@ -12,31 +15,14 @@
     "test": "npm run lint && npm run unit && tsd",
     "coverage": "nyc --reporter=lcov tape test.js",
     "test:ci": "npm run lint && npm run coverage && npm run test:typescript",
-    "license-checker": "license-checker --production --onlyAllow='MIT;ISC;BSD-3-Clause;BSD-2-Clause'",
-    "release": "read -p 'GITHUB_TOKEN: ' GITHUB_TOKEN && export GITHUB_TOKEN=$GITHUB_TOKEN && release-it --disable-metrics"
-  },
-  "release-it": {
-    "github": {
-      "release": true
-    },
-    "git": {
-      "tagName": "v${version}"
-    },
-    "hooks": {
-      "before:init": [
-        "npm run test"
-      ]
-    },
-    "npm": {
-      "publish": true
-    }
+    "license-checker": "license-checker --production --onlyAllow='MIT;ISC;BSD-3-Clause;BSD-2-Clause'"
   },
   "pre-commit": [
     "test"
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/moscajs/aedes-persistence.git"
+    "url": "git+https://github.com/bolteu/aedes-persistence.git"
   },
   "keywords": [
     "mqtt",
@@ -53,9 +39,9 @@
   ],
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/moscajs/aedes-persistence/issues"
+    "url": "https://github.com/bolteu/aedes-persistence/issues"
   },
-  "homepage": "https://github.com/moscajs/aedes-persistence#readme",
+  "homepage": "https://github.com/bolteu/aedes-persistence#readme",
   "engines": {
     "node": ">=14"
   },
@@ -67,7 +53,6 @@
     "mqemitter": "^4.5.0",
     "nyc": "^15.1.0",
     "pre-commit": "^1.2.2",
-    "release-it": "^14.14.2",
     "snazzy": "^9.0.0",
     "standard": "^17.0.0",
     "tape": "^5.5.3",
