@@ -1,6 +1,6 @@
 {
   "name": "aedes-persistence",
-  "version": "9.1.4",
+  "version": "9.1.100",
   "description": "The spec for an Aedes persistence, with abstract tests and a fast in-memory implementation.",
   "main": "persistence.js",
   "types": "types/index.d.ts",
@@ -59,7 +59,7 @@
     "tsd": "^0.20.0"
   },
   "dependencies": {
-    "aedes-packet": "3.0.1",
+    "aedes-packet": "3.0.100",
     "qlobber": "^7.0.0"
   }
 }
