@@ -205,6 +205,42 @@ async function delWill (instance, client) {
     })
   })
 }
+
+async function storeSharedSubscription (instance, topic, group, clientId) {
+  return new Promise((resolve, reject) => {
+    instance.storeSharedSubscription(topic, group, clientId, (err, reTopic) => {
+      if (err) {
+        reject(err)
+      } else {
+        resolve(reTopic)
+      }
+    })
+  })
+}
+
+async function removeSharedSubscription (instance, topic, group, clientId) {
+  return new Promise((resolve, reject) => {
+    instance.removeSharedSubscription(topic, group, clientId, (err) => {
+      if (err) {
+        reject(err)
+      } else {
+        resolve()
+      }
+    })
+  })
+}
+
+async function getSharedTopics (instance, topic) {
+  return new Promise((resolve, reject) => {
+    instance.getSharedTopics(topic, (err, reTopics) => {
+      if (err) {
+        reject(err)
+      } else {
+        resolve(reTopics)
+      }
+    })
+  })
+}
 // end of promisified versions of instance methods
 
 // helper functions
@@ -1582,100 +1618,92 @@ function abstractPersistence (opts) {
     await doCleanup(t, instance)
   })
 
-  testInstance('build proper shared topic for client', (t, instance) => {
-    t.equal(instance.buildClientSharedTopic('group', 'clientId'), '$share/group/$client_clientId/')
-    instance.destroy(t.end.bind(t))
+  test('build proper shared topic for client', async (t) => {
+    const instance = await persistence(t)
+    t.assert.equal(instance.buildClientSharedTopic('group', 'clientId'), '$share/group/$client_clientId/')
+    await doCleanup(t, instance)
   })
 
-  testInstance(
-    'parse client topic properly', (t, instance) => {
-      t.deepEqual(instance.parseSharedTopic('$share/group/$client_clientId/some_topic'), {
+  test(
+    'parse client topic properly', async (t) => {
+      const instance = await persistence(t)
+      t.assert.deepEqual(instance.parseSharedTopic('$share/group/$client_clientId/some_topic'), {
         group: 'group',
         client_id: 'clientId',
         topic: 'some_topic'
       }, ' matches')
 
-      t.deepEqual(instance.parseSharedTopic('$share/group/$client_clientId/some/+/topic'), {
+      t.assert.deepEqual(instance.parseSharedTopic('$share/group/$client_clientId/some/+/topic'), {
         group: 'group',
         client_id: 'clientId',
         topic: 'some/+/topic'
       }, ' matches')
 
-      t.deepEqual(instance.parseSharedTopic('$share/group/some_topic'), {
+      t.assert.deepEqual(instance.parseSharedTopic('$share/group/some_topic'), {
         group: 'group',
         client_id: null,
         topic: 'some_topic'
       }, ' matches')
 
-      t.deepEqual(instance.parseSharedTopic('$share/group/some/topic'), {
+      t.assert.deepEqual(instance.parseSharedTopic('$share/group/some/topic'), {
         group: 'group',
         client_id: null,
         topic: 'some/topic'
       }, ' matches')
 
-      t.deepEqual(instance.parseSharedTopic('$share/group/'), {
+      t.assert.deepEqual(instance.parseSharedTopic('$share/group/'), {
         group: 'group',
         client_id: null,
         topic: ''
       }, ' matches')
 
-      t.equal(instance.parseSharedTopic('$share/group'), null)
-      t.equal(instance.parseSharedTopic('not_share_topic/$share/group'), null)
-      instance.destroy(t.end.bind(t))
+      t.assert.equal(instance.parseSharedTopic('$share/group'), null)
+      t.assert.equal(instance.parseSharedTopic('not_share_topic/$share/group'), null)
+      await doCleanup(t, instance)
     })
 
-  testInstance('store shared subscription', (t, instance) => {
-    instance.storeSharedSubscription('topic', 'group', 'clientId', (err, clientTopic) => {
-      t.error(err)
-      t.equal(clientTopic, '$share/group/$client_clientId/topic')
-      instance.getSharedTopics('topic', (err, shardedTopics) => {
-        t.error(err)
-        t.equal(shardedTopics.length, 1)
-        t.equal(shardedTopics[0], '$share/group/$client_clientId/topic')
-
-        instance.removeSharedSubscription('topic', 'group', 'clientId', (err) => {
-          t.error(err)
-          instance.getSharedTopics('topic', (err, shardedTopics) => {
-            t.error(err)
-            t.equal(shardedTopics.length, 0)
-            instance.destroy(t.end.bind(t))
-          })
-        })
-      })
-    })
+  test('store shared subscription', async (t) => {
+    const instance = await persistence(t)
+    const clientTopic = await storeSharedSubscription(instance, 'topic', 'group', 'clientId')
+    t.assert.equal(clientTopic, '$share/group/$client_clientId/topic')
+    let shardedTopics = await getSharedTopics(instance, 'topic')
+    t.assert.equal(shardedTopics.length, 1)
+    t.assert.equal(shardedTopics[0], '$share/group/$client_clientId/topic')
+    await removeSharedSubscription(instance, 'topic', 'group', 'clientId')
+    shardedTopics = await getSharedTopics(instance, 'topic')
+    t.assert.equal(shardedTopics.length, 0)
+    await doCleanup(t, instance)
   })
 
-  testInstance('store wildcard shared subscription', (t, instance) => {
-    instance.storeSharedSubscription('topic/+/s', 'group', 'clientId', (err, clientTopic) => {
-      t.error(err)
-      t.equal(clientTopic, '$share/group/$client_clientId/topic/+/s')
-      instance.getSharedTopics('topic/qwe/s', (err, shardedTopics) => {
-        t.error(err)
-        t.equal(shardedTopics.length, 1)
-        t.equal(shardedTopics[0], '$share/group/$client_clientId/topic/qwe/s')
-        instance.destroy(t.end.bind(t))
-      })
-    })
+  test('store wildcard shared subscription', async (t) => {
+    const instance = await persistence(t)
+    const clientTopic = await storeSharedSubscription(instance, 'topic/+/s', 'group', 'clientId')
+    t.assert.equal(clientTopic, '$share/group/$client_clientId/topic/+/s')
+    const shardedTopics = await getSharedTopics(instance, 'topic/qwe/s')
+    t.assert.equal(shardedTopics.length, 1)
+    t.assert.equal(shardedTopics[0], '$share/group/$client_clientId/topic/qwe/s')
+    await doCleanup(t, instance)
   })
 
-  testInstance('get not existent shared subscription', (t, instance) => {
-    instance.getSharedTopics('topic/qwe/s', (err, shardedTopics) => {
-      t.error(err)
-      t.deepEqual(shardedTopics, [])
-      instance.destroy(t.end.bind(t))
-    })
+  test('get not existent shared subscription', async (t) => {
+    const instance = await persistence(t)
+    const shardedTopics = await getSharedTopics(instance, 'topic/qwe/s')
+    t.assert.deepEqual(shardedTopics, [])
+    await doCleanup(t, instance)
   })
 
-  testInstance('build proper shared topic for client', (t, instance) => {
-    t.equal(instance.buildClientSharedTopic('group', 'clientId'), '$share/group/$client_clientId/')
-    instance.destroy(t.end.bind(t))
+  test('build proper shared topic for client', async (t) => {
+    const instance = await persistence(t)
+    t.assert.equal(instance.buildClientSharedTopic('group', 'clientId'), '$share/group/$client_clientId/')
+    await doCleanup(t, instance)
   })
 
-  testInstance('parse client topic properly', (t, instance) => {
-    t.equal(instance.restoreOriginalTopicFromSharedOne('$share/group/$client_clientId/some_topic'), 'some_topic')
-    t.equal(instance.restoreOriginalTopicFromSharedOne('$share/group/some_topic'), '$share/group/some_topic')
-    t.equal(instance.restoreOriginalTopicFromSharedOne('non_shared/some_topic'), 'non_shared/some_topic')
-    instance.destroy(t.end.bind(t))
+  test('parse client topic properly', async (t) => {
+    const instance = await persistence(t)
+    t.assert.equal(instance.restoreOriginalTopicFromSharedOne('$share/group/$client_clientId/some_topic'), 'some_topic')
+    t.assert.equal(instance.restoreOriginalTopicFromSharedOne('$share/group/some_topic'), '$share/group/some_topic')
+    t.assert.equal(instance.restoreOriginalTopicFromSharedOne('non_shared/some_topic'), 'non_shared/some_topic')
+    await doCleanup(t, instance)
   })
 }
 
